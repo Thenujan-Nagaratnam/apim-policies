@@ -20,25 +20,38 @@
 
 package org.wso2.apim.policies.mediation.ai.semantic.cache;
 
+/**
+ * Constants for the SemanticCache mediator.
+ * <p>
+ * Contains configuration defaults, error codes, and other constant values used throughout
+ * the semantic caching implementation.
+ */
 public class SemanticCacheConstants {
-    public static String TEXT_CLEAN_REGEX = "^\"|\"$";
+
+    // Protocol and Response Configuration
     public static final String HTTP_PROTOCOL_TYPE = "HTTP";
     public static final String ANY_RESPONSE_CODE = ".*";
     public static final int DEFAULT_SIZE = -1;
     public static final boolean DEFAULT_ADD_AGE_HEADER = false;
     public static final boolean DEFAULT_ENABLE_CACHE_CONTROL = false;
+    
+    // Cache Configuration
+    public static final int DEFAULT_THRESHOLD = 80;
     public static final String REQUEST_EMBEDDINGS = "requestEmbeddings";
+    public static final String EMBEDDING_DIMENSION = "embedding_dimension";
+    
+    // HTTP Headers and Status
     public static final String CONTENT_TYPE = "Content-Type";
     public static final String SC_NOT_MODIFIED = "304";
-
     public static final String NO_STORE_STRING = "no-store";
     public static final String CACHE_KEY = "cacheKey";
     public static final String DATE_PATTERN = "EEE, dd MMM yyyy HH:mm:ss z";
-
-    public static final String EMBEDDING_DIMENSION = "embedding_dimension";
-    public static final int DEFAULT_THRESHOLD = 80;
-
+    
+    // API Configuration
     public static final String API_ID = "api_id";
     public static final String API_UUID = "API_UUID";
     public static final String THRESHOLD = "threshold";
+    
+    // Text Processing
+    public static final String TEXT_CLEAN_REGEX = "^\"|\"$";
 }
