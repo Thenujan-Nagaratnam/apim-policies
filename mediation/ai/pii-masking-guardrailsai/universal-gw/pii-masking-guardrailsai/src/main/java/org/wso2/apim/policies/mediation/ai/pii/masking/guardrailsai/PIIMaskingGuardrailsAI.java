@@ -74,7 +74,8 @@ import java.util.regex.PatternSyntaxException;
  */
 public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(PIIMaskingGuardrailsAI.class);
-    private static final String guardrails_pii_url = "http://4.193.243.14:8000/validate/pii";
+    private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
+    private static final String guardrails_pii_url = "http://localhost:8000/validate/pii";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private String name;
@@ -111,6 +112,10 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
 
         try {
             identifyPIIAndTransform(messageContext);
+            String actionMessage = redact ? "Redaction completed successfully." : "Masking completed successfully.";
+            String flow = messageContext.isResponse() ? "response" : "request";
+            String guardrailMessage = actionMessage + " In mediation " + flow + ".";
+            logGuardrailViolation(messageContext, false, guardrailMessage);
         } catch (Exception e) {
             logger.error("Exception occurred during mediation.", e);
 
@@ -120,10 +125,9 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
                     "Error occurred during PIIMaskingRegex mediation");
             Mediator faultMediator = messageContext.getFaultSequence();
             faultMediator.mediate(messageContext);
-
+            logGuardrailViolation(messageContext, true, e.getMessage());
             return false; // Stop further mediation
         }
-
         return true;
     }
 
@@ -352,6 +356,16 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
         org.apache.axis2.context.MessageContext axis2MC =
                 ((Axis2MessageContext) messageContext).getAxis2MessageContext();
         return JsonUtil.jsonPayloadToString(axis2MC);
+    }
+
+    public void logGuardrailViolation(MessageContext messageContext, boolean verdict, String violationMessage) {
+        long timestamp = System.currentTimeMillis();
+        // Extract API name from messageContext
+        String apiName = (String) messageContext.getProperty("SYNAPSE_REST_API"); // adjust key as per your context
+        String status = verdict? "|VALIDATION FAILED|": "|VALIDATION PASSED|";
+        String logLine = timestamp + "|" + apiName + status + violationMessage;
+        // Log it
+        guardrailLogger.info(logLine);
     }
 
     public String getName() {

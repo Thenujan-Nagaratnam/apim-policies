@@ -1,9 +1,9 @@
 {
   "category": "Mediation",
-  "name": "PIIMaskingRegex",
+  "name": "PIIMaskingGuardrailsAI",
   "version": "v1.0",
-  "displayName": "PII Masking with Regex",
-  "description": "Detects and masks Personally Identifiable Information (PII) based on specified regular expression patterns. By default, PII values are masked during the request flow and restored in the response flow. If the 'redact' attribute is set to true, PII values will be permanently replaced with '*****'.",
+  "displayName": "PII Masking with Guardrails AI",
+  "description": "Detects and masks Personally Identifiable Information (PII) using Guardrails PII model. By default, PII values are masked during the request flow and restored in the response flow. If the 'redact' attribute is set to true, PII values will be permanently replaced with '*****'.",
   "applicableFlows": [
     "request",
     "response"
@@ -29,9 +29,9 @@
     {
       "name": "piiEntities",
       "displayName": "PII Entities",
-      "description": "The PII entities to detect and mask using regular expressions. Each entry should include the entity name and its corresponding regex pattern.",
+      "description": "The PII entities to detect and mask.",
       "type": "JSON",
-      "defaultValue": "[\n  {\n    \"piiEntity\": \"\",\n    \"piiRegex\": \"\"\n  }\n]",
+      "defaultValue": "[\n  \"CREDIT_CARD\",\n  \"CRYPTO\",\n  \"DATE_TIME\",\n  \"EMAIL_ADDRESS\",\n  \"IBAN_CODE\",\n  \"IP_ADDRESS\",\n  \"NRP\",\n  \"LOCATION\",\n  \"PERSON\",\n  \"PHONE_NUMBER\",\n  \"MEDICAL_LICENSE\",\n  \"URL\",\n  \"US_BANK_NUMBER\",\n  \"US_DRIVER_LICENSE\",\n  \"US_ITIN\",\n  \"US_PASSPORT\",\n  \"US_SSN\",\n  \"UK_NHS\",\n  \"ES_NIF\",\n  \"ES_NIE\",\n  \"IT_FISCAL_CODE\",\n  \"IT_DRIVER_LICENSE\",\n  \"IT_VAT_CODE\",\n  \"IT_PASSPORT\",\n  \"IT_IDENTITY_CARD\",\n  \"PL_PESEL\",\n  \"SG_NRIC_FIN\",\n  \"SG_UEN\",\n  \"AU_ABN\",\n  \"AU_ACN\",\n  \"AU_TFN\",\n  \"AU_MEDICARE\",\n  \"IN_PAN\",\n  \"IN_AADHAAR\",\n  \"IN_VEHICLE_REGISTRATION\",\n  \"IN_VOTER\",\n  \"IN_PASSPORT\",\n  \"FI_PERSONAL_IDENTITY_CODE\"\n]",
       "allowedValues": [],
       "required": true
     },
