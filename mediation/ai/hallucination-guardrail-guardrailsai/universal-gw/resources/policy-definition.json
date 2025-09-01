@@ -53,6 +53,15 @@
       "defaultValue": ""
     },
     {
+      "name": "outputFields",
+      "displayName": "Output Fields",
+      "description": "A comma-separated list of vector database collection schema fields to include in the output for grounding verification. All fields will be used if not specified.",
+      "type": "String",
+      "allowedValues": [],
+      "required": false,
+      "defaultValue": ""
+    },
+    {
       "name": "passthroughOnError",
       "displayName": "Passthrough on Error",
       "description": "If enabled, the response is passed through without validation when the hallucination detection service is unavailable. Otherwise, a guardrail validation error is triggered.",

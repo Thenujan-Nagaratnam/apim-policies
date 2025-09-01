@@ -19,6 +19,7 @@
 package org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal;
 
 import org.wso2.carbon.apimgt.api.EmbeddingProviderService;
+import org.wso2.carbon.apimgt.api.GuardrailProviderService;
 import org.wso2.carbon.apimgt.api.VectorDBProviderService;
 
 public class ServiceReferenceHolder {
@@ -26,6 +27,7 @@ public class ServiceReferenceHolder {
 
     private EmbeddingProviderService embeddingProvider;
     private VectorDBProviderService vectorDBProvider;
+    private GuardrailProviderService guardrailProvider;
 
     private ServiceReferenceHolder() {
     }
@@ -48,5 +50,13 @@ public class ServiceReferenceHolder {
 
     public void setVectorDBProvider(VectorDBProviderService vectorDBProvider) {
         this.vectorDBProvider = vectorDBProvider;
+    }
+
+    public GuardrailProviderService getGuardrailProvider() {
+        return guardrailProvider;
+    }
+
+    public void setGuardrailProvider(GuardrailProviderService guardrailProvider) {
+        this.guardrailProvider = guardrailProvider;
     }
 }

@@ -25,12 +25,6 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.Mediator;
 import org.apache.synapse.MessageContext;
@@ -43,14 +37,11 @@ import org.apache.synapse.transport.nhttp.NhttpConstants;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.wso2.carbon.apimgt.api.APIManagementException;
-import org.wso2.carbon.apimgt.impl.APIConstants;
-import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.api.GuardrailProviderService;
 import org.wso2.carbon.apimgt.api.EmbeddingProviderService;
 import org.wso2.carbon.apimgt.api.VectorDBProviderService;
 import org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal.ServiceReferenceHolder;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -61,11 +52,11 @@ import java.util.Map;
 public class HallucinationGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(HallucinationGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_hallucination_url = "<guardrail-host-url>";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private VectorDBProviderService vectorDBProvider;
     private EmbeddingProviderService embeddingProvider;
+    private GuardrailProviderService guardrailProvider;
 
     private String name;
     private String jsonPath = "";
@@ -73,6 +64,7 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
     private boolean showAssessment = false;
     private boolean passthroughOnError = false;
     private String knowledgeBaseCollectionName;
+    private final JSONArray outputFields = new JSONArray(); // Default to all fields
 
     /**
      * Initializes the HallucinationGuardrailGuardrailsAI mediator.
@@ -85,15 +77,17 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
             logger.debug("Initializing HallucinationGuardrailGuardrailsAI.");
         }
 
-        this.embeddingProvider = ServiceReferenceHolder.getInstance().getEmbeddingProvider();
-        this.vectorDBProvider = ServiceReferenceHolder.getInstance().getVectorDBProvider();
+        embeddingProvider = ServiceReferenceHolder.getInstance().getEmbeddingProvider();
+        vectorDBProvider = ServiceReferenceHolder.getInstance().getVectorDBProvider();
+        guardrailProvider = ServiceReferenceHolder.getInstance().getGuardrailProvider();
 
         // Only validate vector services if knowledge base connection is enabled
         if (connectKnowledgeBase) {
-            if (this.embeddingProvider == null || this.vectorDBProvider == null) {
+            if (embeddingProvider == null || vectorDBProvider == null || guardrailProvider == null) {
                 String errorMsg = "Knowledge base connection enabled but required services not available. " +
-                        "EmbeddingProviderService present: " + (this.embeddingProvider != null) +
-                        ", VectorDBProviderService present: " + (this.vectorDBProvider != null);
+                        "EmbeddingProviderService present: " + (embeddingProvider != null) +
+                        ", VectorDBProviderService present: " + (vectorDBProvider != null) +
+                        ", GuardrailProviderService present: " + (guardrailProvider != null) + ".";
                 logger.error(errorMsg);
                 throw new RuntimeException(errorMsg);
             }
@@ -291,7 +285,15 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
         }
 
         try {
-            String response = callOut(responsePayload, query, filteredKnowledgeBase);
+            Map<String, Object> callOutConfig = new HashMap<>();
+            Map<String, Object> requestPayload = new HashMap<>();
+            requestPayload.put("text", responsePayload);
+            if (isConnectKnowledgeBase()){
+                requestPayload.put("query", query);
+                requestPayload.put("knowledge_base", filteredKnowledgeBase);
+            }
+            callOutConfig.put("request_payload", requestPayload);
+            String response = guardrailProvider.callOut(callOutConfig);
             return processValidationResponse(response, messageContext);
         } catch (APIManagementException | JsonProcessingException e) {
             return handleValidationError(messageContext, e);
@@ -334,11 +336,9 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
         extraParams.put(HallucinationGuardrailGuardrailsAIConstants.VECTOR_DB_PROVIDER_COLLECTION_NAME,
                 getKnowledgeBaseCollectionName());
         extraParams.put("threshold", 0.35);
-        extraParams.put("limit", 3);
-
-        JSONArray fields = new JSONArray();
-        fields.put("text");
-        extraParams.put("outputFields", fields);
+        extraParams.put("limit", 5);
+        extraParams.put("metricType", "L2");
+        extraParams.put("outputFields", outputFields);
 
         String knowledgeBaseString = vectorDBProvider.retrieve(embeddings, "", extraParams);
         if (knowledgeBaseString == null || knowledgeBaseString.isEmpty()) {
@@ -346,13 +346,17 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
         }
 
         JSONArray knowledgeBase = new JSONArray(knowledgeBaseString);
-        JSONArray filteredKnowledgeBase = new JSONArray();
 
+        if (outputFields.isEmpty()) {
+            return knowledgeBase.toString();
+        }
+
+        JSONArray filteredKnowledgeBase = new JSONArray();
         for (int i = 0; i < knowledgeBase.length(); i++) {
             JSONObject item = knowledgeBase.getJSONObject(i);
             JSONObject filteredItem = new JSONObject();
-            for (int j = 0; j < fields.length(); j++) {
-                String field = fields.getString(j);
+            for (Object fieldObj : outputFields) {
+                String field = fieldObj.toString();
                 if (item.has(field)) {
                     filteredItem.put(field, item.get(field));
                 }
@@ -404,50 +408,6 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
             logger.warn("API call to hallucination resource has failed or returned an unexpected response, " +
                        "but continuing processing.");
             return true;
-        }
-    }
-
-    /**
-     * Calls out to the external hallucination detection resource with the given text and optional knowledge base.
-     *
-     * @param text          The text to validate for hallucination
-     * @param query         The query string for knowledge base retrieval
-     * @param knowledgeBase The knowledge base context as a JSONArray string
-     * @return The response from the hallucination detection resource as a JSON string
-     * @throws APIManagementException If an error occurs during the HTTP call or response processing
-     */
-    private String callOut(String text, String query, String knowledgeBase) throws APIManagementException {
-        String url = guardrails_hallucination_url;
-        HttpClient httpClient = APIUtil.getHttpClient(url);
-        HttpPost post = new HttpPost(url);
-        post.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
-
-        try {
-            // Build payload
-            Map<String, Object> payloadObj = new HashMap<>();
-            payloadObj.put("text", text);
-            if (isConnectKnowledgeBase()){
-                payloadObj.put("query", query);
-                payloadObj.put("knowledge_base", knowledgeBase);
-            }
-
-            String body = objectMapper.writeValueAsString(payloadObj);
-            post.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = APIUtil.executeHTTPRequestWithRetries(
-                    post, httpClient, 10000, 0, 1)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-
-                if (statusCode == HttpStatus.SC_OK) {
-                    JsonNode root = objectMapper.readTree(responseBody);
-                    return root.toString();
-                } else {
-                    throw new APIManagementException("Unexpected status code " + statusCode + ": " + responseBody);
-                }
-            }
-        } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to hallucination resource", e);
         }
     }
 
@@ -550,5 +510,22 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
     public void setKnowledgeBaseCollectionName(String knowledgeBaseCollectionName) {
 
         this.knowledgeBaseCollectionName = knowledgeBaseCollectionName;
+    }
+
+    public JSONArray getOutputFields() {
+
+        return outputFields;
+    }
+
+    public void setOutputFields(String outputFieldsString) {
+
+        String[] fieldsArray = outputFieldsString.split(",");
+        ArrayList<String> fieldsList = new ArrayList<>();
+        for (String field : fieldsArray) {
+            String trimmedField = field.trim();
+            if (!trimmedField.isEmpty()) {
+                outputFields.put(trimmedField);
+            }
+        }
     }
 }
