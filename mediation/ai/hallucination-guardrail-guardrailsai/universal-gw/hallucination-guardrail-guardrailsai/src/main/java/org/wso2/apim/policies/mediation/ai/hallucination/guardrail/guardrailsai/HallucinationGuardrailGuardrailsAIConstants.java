@@ -32,8 +32,16 @@ public class HallucinationGuardrailGuardrailsAIConstants {
     public static final String DIRECTION = "direction";
     public static final String ASSESSMENTS = "assessments";
     public static final String TEXT_CLEAN_REGEX = "^\"|\"$";
-    public static final String EMBEDDING_DIMENSION = "embedding_dimension";
-    public static final String KNOWLEDGE_BASE = "knowledge_base";
+    public static final String CONTEXT = "context";
+    public static final String QUESTION = "question";
+    public static final String ANSWER = "answer";
+    public static final String REQUEST_PAYLOAD = "request_payload";
+    public static final String RESOURCE = "resource";
+    public static final String POLICY_RESOURCE = "/validate/hallucination";
+    public static final String THRESHOLD = "threshold";
+    public static final String LIMIT = "limit";
+    public static final String METRIC_TYPE = "metricType";
+    public static final String OUTPUT_FIELDS = "outputFields";
     public static final String VECTOR_DB_PROVIDER_COLLECTION_NAME = "collectionName";
 
 }

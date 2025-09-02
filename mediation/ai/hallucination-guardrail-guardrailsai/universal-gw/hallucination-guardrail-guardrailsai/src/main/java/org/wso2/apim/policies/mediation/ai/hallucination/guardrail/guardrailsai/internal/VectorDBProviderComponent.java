@@ -25,7 +25,7 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.apimgt.api.VectorDBProviderService;
 
 @Component(
-        name = "org.wso2.apim.policies.mediation.ai.semantic.cache.internal.VectorDBProviderServiceComponent",
+        name = "org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal.VectorDBProviderComponent",
         immediate = true
 )
 public class VectorDBProviderComponent {

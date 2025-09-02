@@ -25,10 +25,11 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.apimgt.api.GuardrailProviderService;
 
 @Component(
-        name = "org.wso2.apim.policies.mediation.ai.semantic.cache.internal.GuardrailProviderServiceComponent",
+        name = "org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal.GuardrailProviderComponent",
         immediate = true
 )
 public class GuardrailProviderComponent {
+
     @Reference(
             name = "guardrail_provider.provider.service",
             service = GuardrailProviderService.class,
@@ -37,10 +38,12 @@ public class GuardrailProviderComponent {
             unbind = "unbindProvider"
     )
     protected void bindProvider(GuardrailProviderService provider) {
+
         ServiceReferenceHolder.getInstance().setGuardrailProvider(provider);
     }
 
     protected void unbindProvider(GuardrailProviderService provider) {
+
         ServiceReferenceHolder.getInstance().setGuardrailProvider(null);
     }
 }

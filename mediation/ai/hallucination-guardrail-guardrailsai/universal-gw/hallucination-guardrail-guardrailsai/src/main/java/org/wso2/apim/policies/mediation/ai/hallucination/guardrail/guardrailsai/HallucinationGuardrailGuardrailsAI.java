@@ -64,7 +64,7 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
     private boolean showAssessment = false;
     private boolean passthroughOnError = false;
     private String knowledgeBaseCollectionName;
-    private final JSONArray outputFields = new JSONArray(); // Default to all fields
+    private final JSONArray outputFields = new JSONArray();
 
     /**
      * Initializes the HallucinationGuardrailGuardrailsAI mediator.
@@ -154,7 +154,7 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
             return;
         }
 
-        messageContext.setProperty("query", query);
+        messageContext.setProperty(HallucinationGuardrailGuardrailsAIConstants.QUESTION, query);
     }
 
     /**
@@ -271,11 +271,12 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
         String query = "";
         String filteredKnowledgeBase = "";
 
-        if (isConnectKnowledgeBase()) {
-            Object queryObject = messageContext.getProperty("query");
-            if (queryObject != null) {
-                query = queryObject.toString();
-            }
+        Object queryObject = messageContext.getProperty(HallucinationGuardrailGuardrailsAIConstants.QUESTION);
+        if (queryObject != null) {
+            query = queryObject.toString();
+        }
+
+        if (connectKnowledgeBase) {
             if (!query.isEmpty()) {
                 double[] embeddings = embeddingProvider.getEmbedding(query);
                 if (embeddings != null && embeddings.length != 0) {
@@ -287,12 +288,14 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
         try {
             Map<String, Object> callOutConfig = new HashMap<>();
             Map<String, Object> requestPayload = new HashMap<>();
-            requestPayload.put("text", responsePayload);
-            if (isConnectKnowledgeBase()){
-                requestPayload.put("query", query);
-                requestPayload.put("knowledge_base", filteredKnowledgeBase);
-            }
-            callOutConfig.put("request_payload", requestPayload);
+
+            requestPayload.put(HallucinationGuardrailGuardrailsAIConstants.QUESTION, query);
+            requestPayload.put(HallucinationGuardrailGuardrailsAIConstants.ANSWER, responsePayload);
+            requestPayload.put(HallucinationGuardrailGuardrailsAIConstants.CONTEXT, filteredKnowledgeBase);
+
+            callOutConfig.put(HallucinationGuardrailGuardrailsAIConstants.REQUEST_PAYLOAD, requestPayload);
+            callOutConfig.put(HallucinationGuardrailGuardrailsAIConstants.RESOURCE,
+                    HallucinationGuardrailGuardrailsAIConstants.POLICY_RESOURCE);
             String response = guardrailProvider.callOut(callOutConfig);
             return processValidationResponse(response, messageContext);
         } catch (APIManagementException | JsonProcessingException e) {
@@ -314,31 +317,17 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
     }
 
     /**
-     * Retrieves query from message context.
-     */
-    private String getQueryFromContext(MessageContext messageContext) {
-        Object queryObject = messageContext.getProperty("query");
-        if (queryObject != null) {
-            return queryObject.toString();
-        }
-        if (logger.isDebugEnabled()) {
-            logger.debug("No query found in message context for knowledge base retrieval.");
-        }
-        return "";
-    }
-
-    /**
      * Retrieves and filters knowledge base entries.
      */
     private String retrieveAndFilterKnowledgeBase(double[] embeddings) throws APIManagementException {
         // Create parameters map with constants
         Map<String, Object> extraParams = new HashMap<>();
         extraParams.put(HallucinationGuardrailGuardrailsAIConstants.VECTOR_DB_PROVIDER_COLLECTION_NAME,
-                getKnowledgeBaseCollectionName());
-        extraParams.put("threshold", 0.35);
-        extraParams.put("limit", 5);
-        extraParams.put("metricType", "L2");
-        extraParams.put("outputFields", outputFields);
+                knowledgeBaseCollectionName);
+        extraParams.put(HallucinationGuardrailGuardrailsAIConstants.THRESHOLD, 0.35);
+        extraParams.put(HallucinationGuardrailGuardrailsAIConstants.LIMIT, 5);
+        extraParams.put(HallucinationGuardrailGuardrailsAIConstants.METRIC_TYPE, "L2");
+        extraParams.put(HallucinationGuardrailGuardrailsAIConstants.OUTPUT_FIELDS, outputFields);
 
         String knowledgeBaseString = vectorDBProvider.retrieve(embeddings, "", extraParams);
         if (knowledgeBaseString == null || knowledgeBaseString.isEmpty()) {

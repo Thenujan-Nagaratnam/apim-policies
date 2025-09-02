@@ -25,10 +25,10 @@ import org.osgi.service.component.annotations.ReferencePolicy;
 import org.wso2.carbon.apimgt.api.EmbeddingProviderService;
 
 @Component(
-        name = "org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal.EmbeddingServiceProviderComponent",
+        name = "org.wso2.apim.policies.mediation.ai.hallucination.guardrail.guardrailsai.internal.EmbeddingProviderComponent",
         immediate = true
 )
-public class EmbeddingServiceProviderComponent {
+public class EmbeddingProviderComponent {
 
     @Reference(
             name = "embedding.provider.service",
