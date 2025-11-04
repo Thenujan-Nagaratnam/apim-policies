@@ -1,9 +1,9 @@
 {
   "category": "Mediation",
-  "name": "PIIMaskingGuardrailsAI",
+  "name": "AdvancedPIIGuardrailByWSO2",
   "version": "v1.0",
-  "displayName": "PII Masking with Guardrails AI",
-  "description": "Detects and masks Personally Identifiable Information (PII) using Guardrails PII model. By default, PII values are masked during the request flow and restored in the response flow. If the 'redact' attribute is set to true, PII values will be permanently replaced with '*****'.",
+  "displayName": "Advanced PII Guardrail by WSO2",
+  "description": "Detects and masks sensitive data using an advanced PII (personally identifiable information) detection model powered by WSO2 guardrails. By default, PII values are masked during the request flow and restored in the response flow. If the 'redact' attribute is set to true, PII values will be permanently replaced with '*****'.",
   "applicableFlows": [
     "request",
     "response"

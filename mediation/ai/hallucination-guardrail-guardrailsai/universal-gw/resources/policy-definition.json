@@ -1,9 +1,9 @@
 {
   "category": "Mediation",
-  "name": "HallucinationGuardrailGuardrailsAI",
+  "name": "AdvancedHallucinationGuardrailByWSO2",
   "version": "v1.0",
-  "displayName": "Hallucination Detection Guardrail with Guardrails AI",
-  "description": "Validates the response content against a hallucination detection model on Guardrails AI. If the content is detected as hallucinated, the guardrail intervenes and returns an error response.",
+  "displayName": "Advanced Hallucination Guardrail by WSO2",
+  "description": "Validates response content using an advanced hallucination detection model powered by WSO2 guardrails. If the content is detected as hallucinated, the guardrail intervenes and returns an error response.",
   "applicableFlows": [
     "response"
   ],
@@ -34,9 +34,18 @@
       "required": false
     },
     {
+      "name": "connectKnowledgeBase",
+      "displayName": "Connect to a Vector Database for Hallucination Detection through Grounded Knowledge",
+      "description": "If enabled, the hallucination detection leverages a vector database to verify whether the response is grounded in the knowledge base.",
+      "required": false,
+      "defaultValue": "false",
+      "type": "Boolean",
+      "allowedValues": []
+    },
+    {
       "name": "passthroughOnError",
       "displayName": "Passthrough on Error",
-      "description": "If enabled, the response is passed through without validation when the Guardrail AI service is unavailable. Otherwise, a guardrail validation error is triggered.",
+      "description": "If enabled, the response is passed through without validation when the hallucination detection service is unavailable. Otherwise, a guardrail validation error is triggered.",
       "required": false,
       "defaultValue": "false",
       "type": "Boolean",

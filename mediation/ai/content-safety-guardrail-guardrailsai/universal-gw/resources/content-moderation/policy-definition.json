@@ -1,9 +1,9 @@
 {
   "category": "Mediation",
-  "name": "ContentSafetyGuardrailGuardrailsAI",
-  "displayName": "Content Safety Guardrail with Guardrails AI",
+  "name": "AdvancedContentSafetyGuardrailByWSO2",
+  "displayName": "Advanced Content Safety Guardrail by WSO2",
   "version": "v1.0",
-  "description": "Integrate Guardrails AI Content Safety service to filter out harmful content in request messages sent to AI APIs and in AI generated content within AI API responses.",
+  "description": "Filters harmful content in AI API requests and AI generated responses using an advanced content safety model powered by WSO2 guardrails",
   "applicableFlows": [
     "request",
     "response"
@@ -154,7 +154,7 @@
     {
       "name": "passthroughOnError",
       "displayName": "Passthrough on Error",
-      "description": "If enabled, the request or response is passed through without validation when the Guardrail AI service is unavailable. Otherwise, a guardrail validation error is triggered.",
+      "description": "If enabled, the request or response is passed through without validation when the content safety service is unavailable. Otherwise, a guardrail validation error is triggered.",
       "required": false,
       "defaultValue": "false",
       "type": "Boolean",

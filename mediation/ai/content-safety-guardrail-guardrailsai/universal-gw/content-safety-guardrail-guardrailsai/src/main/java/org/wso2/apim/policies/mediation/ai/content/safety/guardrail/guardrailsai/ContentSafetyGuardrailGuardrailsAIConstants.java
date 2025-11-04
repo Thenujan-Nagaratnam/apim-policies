@@ -27,7 +27,7 @@ public class ContentSafetyGuardrailGuardrailsAIConstants {
     public static final String ASSESSMENT_ACTION = "action";
     public static final String INTERVENING_GUARDRAIL = "interveningGuardrail";
     public static final String DIRECTION = "direction";
-    public static final String CONTENT_SAFETY_GUARDRAILS_AI = "CONTENT_SAFETY_GUARDRAILS_AI";
+    public static final String CONTENT_SAFETY_GUARDRAILS_AI = "ADVANCED_CONTENT_SAFETY_GUARDRAIL_BY_WSO2";
     public static final int APIM_INTERNAL_EXCEPTION_CODE = 900967;
     public static final String ASSESSMENT_REASON = "actionReason";
     public static final String ASSESSMENTS = "assessments";

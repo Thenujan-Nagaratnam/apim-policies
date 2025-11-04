@@ -54,7 +54,7 @@ import java.util.Map;
 public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(JailbreakGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_jailbreak_url = "http://localhost:8000/validate/jailbreak";
+    private static final String guardrails_jailbreak_url = "http://23.98.91.151:8000/validate/jailbreak";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private String name;
@@ -124,8 +124,8 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
 
             messageContext.setProperty(SynapseConstants.ERROR_CODE,
                     JailbreakGuardrailGuardrailsAIConstants.APIM_INTERNAL_EXCEPTION_CODE);
-            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE,
-                    "Error occurred during JailbreakGuardrailGuardrailsAI mediation");
+            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, "Error occurred during " +
+                    JailbreakGuardrailGuardrailsAIConstants.JAILBREAK_GUARDRAILS_AI + " mediation");
             Mediator faultMediator = messageContext.getFaultSequence();
             faultMediator.mediate(messageContext);
             logGuardrailViolation(messageContext, true, e.getMessage());
@@ -175,7 +175,7 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
             boolean verdict = verdictNode.asBoolean();
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Guardrails AI jailbreak detection verdict: " + verdict);
+                logger.debug("Prompt injection detection verdict: " + verdict);
             }
 
             if (verdict) {
@@ -183,7 +183,7 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
                 double score = root.path("score").asDouble();
                 messageContext.setProperty("JAILBREAK_ATTEMPT_SCORE", score);
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Guardrails AI jailbreak detection score: " + score);
+                    logger.debug("Prompt injection detection score: " + score);
                 }
 
                 // Check if the score below the threshold
@@ -192,17 +192,17 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
                 }
 
                 if (logger.isDebugEnabled()) {
-                    logger.debug("Jailbreak attempt detected.");
+                    logger.debug("Prompt injection attempt detected.");
                 }
                 return false;
             }
         } catch (APIManagementException | JsonProcessingException e) {
             if (!passthroughOnError) {
-                logger.error("API call to Guardrails AI jailbreak detection resource has failed or returned an unexpected response.");
+                logger.error("API call to " + JailbreakGuardrailGuardrailsAIConstants.JAILBREAK_GUARDRAILS_AI + " has failed or returned an unexpected response.");
                 messageContext.setProperty("GUARDRAILS_AI_MAX_RETRY_FAIL", true);
                 return false; // Guardrail intervention after maximum retries reached
             } else {
-                logger.warn("API call to Guardrails AI Content Safety has failed or returned an unexpected response, " +
+                logger.warn("API call to " + JailbreakGuardrailGuardrailsAIConstants.JAILBREAK_GUARDRAILS_AI + " has failed or returned an unexpected response, " +
                         "but continuing processing.");
             }
         }
@@ -237,7 +237,7 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
                 }
             }
         } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to guardrails ai jailbreak resource", e);
+            throw new APIManagementException("Error occurred while calling out to " + JailbreakGuardrailGuardrailsAIConstants.JAILBREAK_GUARDRAILS_AI, e);
         }
     }
 
@@ -270,13 +270,13 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
         assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENT_ACTION, "GUARDRAIL_INTERVENED");
         assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.INTERVENING_GUARDRAIL, name);
         assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.DIRECTION, messageContext.isResponse()? "RESPONSE" : "REQUEST");
-        assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENT_REASON, "Jailbreak attempt detected.");
+        assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENT_REASON, "Prompt injection attempt detected.");
 
         if (showAssessment) {
             if (messageContext.getProperty("GUARDRAILS_AI_MAX_RETRY_FAIL") != null && (boolean) messageContext.getProperty("GUARDRAILS_AI_MAX_RETRY_FAIL")) {
-                assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENTS, "Guardrails AI jailbreak detection resource failure after maximum retries.");
+                assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENTS, "Prompt injection detection resource failure after maximum retries.");
             } else {
-                assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENTS, "Jailbreak attempt score: " + messageContext.getProperty("JAILBREAK_ATTEMPT_SCORE") + " detected beyond allowed threshold: " + threshold);
+                assessmentObject.put(JailbreakGuardrailGuardrailsAIConstants.ASSESSMENTS, "Prompt injection score: " + messageContext.getProperty("JAILBREAK_ATTEMPT_SCORE") + " detected beyond allowed threshold: " + threshold);
             }
         }
         return assessmentObject.toString();

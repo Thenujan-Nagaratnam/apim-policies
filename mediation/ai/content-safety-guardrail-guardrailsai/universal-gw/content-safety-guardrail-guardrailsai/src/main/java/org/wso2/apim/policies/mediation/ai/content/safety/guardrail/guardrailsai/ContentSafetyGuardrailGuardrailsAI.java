@@ -59,7 +59,7 @@ import java.util.stream.Collectors;
 public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(ContentSafetyGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_contentsafety_url = "http://4.193.243.14:8000/validate/content-safety";
+    private static final String guardrails_contentsafety_url = "http://23.98.91.151:8000/validate/content-safety";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Map<String, String> categoryMapping = new HashMap<>();
 
@@ -92,19 +92,20 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
             logger.debug("Initializing ContentSafetyGuardrailGuardrailsAI.");
         }
 
-        categoryMapping.put("S1", "Violent Crimes");
-        categoryMapping.put("S2", "Non-Violent Crimes");
-        categoryMapping.put("S3", "Sex Crimes");
-        categoryMapping.put("S4", "Child Exploitation");
-        categoryMapping.put("S5", "Defamation");
-        categoryMapping.put("S6", "Specialized Advice");
-        categoryMapping.put("S7", "Privacy");
-        categoryMapping.put("S8", "Intellectual Property");
-        categoryMapping.put("S9", "Indiscriminate Weapons");
-        categoryMapping.put("S10", "Hate");
-        categoryMapping.put("S11", "Self-Harm");
-        categoryMapping.put("S12", "Sexual Content");
-        categoryMapping.put("S13", "Elections");
+        categoryMapping.put("S1", "Default");
+        categoryMapping.put("S2", "Violent Crimes");
+        categoryMapping.put("S3", "Non-Violent Crimes");
+        categoryMapping.put("S4", "Sex Crimes");
+        categoryMapping.put("S5", "Child Exploitation");
+        categoryMapping.put("S6", "Defamation");
+        categoryMapping.put("S7", "Specialized Advice");
+        categoryMapping.put("S8", "Privacy");
+        categoryMapping.put("S9", "Intellectual Property");
+        categoryMapping.put("S10", "Indiscriminate Weapons");
+        categoryMapping.put("S11", "Hate");
+        categoryMapping.put("S12", "Self-Harm");
+        categoryMapping.put("S13", "Sexual Content");
+        categoryMapping.put("S14", "Elections");
     }
 
     /**
@@ -149,8 +150,8 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
             logger.error("Exception occurred during mediation.", e);
             messageContext.setProperty(SynapseConstants.ERROR_CODE,
                     ContentSafetyGuardrailGuardrailsAIConstants.APIM_INTERNAL_EXCEPTION_CODE);
-            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE,
-                    "Error occurred during ContentSafetyGuardrailGuardrailsAI mediation");
+            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, "Error occurred during " +
+                    ContentSafetyGuardrailGuardrailsAIConstants.CONTENT_SAFETY_GUARDRAILS_AI + " mediation");
             Mediator faultMediator = messageContext.getFaultSequence();
             faultMediator.mediate(messageContext);
             logGuardrailViolation(messageContext, true, e.getMessage());
@@ -204,17 +205,18 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
                 throw new APIManagementException("The 'verdict' field is either missing or not a boolean");
             }
 
+            List<String> flaggedCategories = new ArrayList<>();
             // Check verdict
             boolean verdict = verdictNode.asBoolean();
-            List<String> flaggedCategories = new ArrayList<>();
-
-            if (verdict) {
-                JsonNode categoriesNode = root.path("categories");
-                if (categoriesNode.isArray()) {
-                    for (JsonNode category : categoriesNode) {
-                        flaggedCategories.add(categoryMapping.get(category.asText()));
-                    }
+            JsonNode categoriesNode = root.path("categories");
+            if (categoriesNode.isArray()) {
+                for (JsonNode category : categoriesNode) {
+                    flaggedCategories.add(categoryMapping.get(category.asText()));
                 }
+            }
+            flaggedCategories.remove(categoryMapping.get("S1")); // Remove S1 as Llama-Guard hallucinate S1
+
+            if (verdict && !flaggedCategories.isEmpty()) {
                 String assessmentObject = buildAssessmentObject(
                         jsonContent, flaggedCategories, messageContext.isResponse());
                 messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, assessmentObject);
@@ -224,12 +226,12 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
             return true;
         } catch (APIManagementException | JsonProcessingException e) {
             if (!passthroughOnError) {
-                logger.error("API call to Guardrails AI Content Safety has failed or returned an unexpected response.");
+                logger.error("API call to Content Safety has failed or returned an unexpected response.");
                 String assessmentObject = buildAssessmentObject(messageContext.isResponse());
                 messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, assessmentObject);
                 return false; // Guardrail intervention after maximum retries reached
             } else {
-                logger.warn("API call to Guardrails AI Content Safety has failed or returned an unexpected response, " +
+                logger.warn("API call to Content Safety has failed or returned an unexpected response, " +
                         "but continuing processing.");
             }
         }
@@ -248,60 +250,49 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
             payloadObj.put("text", text);
             // Categories map
             Map<String, String> categories = new HashMap<>();
+            categories.put("S1", categoryMapping.get("S1")); // Always include default category
             if (violentCrimes) {
-                categories.put("S1", categoryMapping.get("S1"));
-            }
-            if (nonViolentCrimes) {
                 categories.put("S2", categoryMapping.get("S2"));
             }
-            if (sexRelatedCrimes) {
+            if (nonViolentCrimes) {
                 categories.put("S3", categoryMapping.get("S3"));
             }
-            if (childSexualExploitation) {
+            if (sexRelatedCrimes) {
                 categories.put("S4", categoryMapping.get("S4"));
             }
-            if (defamation) {
+            if (childSexualExploitation) {
                 categories.put("S5", categoryMapping.get("S5"));
             }
-            if (specializedAdvice) {
+            if (defamation) {
                 categories.put("S6", categoryMapping.get("S6"));
             }
-            if (privacy) {
+            if (specializedAdvice) {
                 categories.put("S7", categoryMapping.get("S7"));
             }
-            if (intellectualProperty) {
+            if (privacy) {
                 categories.put("S8", categoryMapping.get("S8"));
             }
-            if (indiscriminateWeapons) {
+            if (intellectualProperty) {
                 categories.put("S9", categoryMapping.get("S9"));
             }
-            if (hate) {
+            if (indiscriminateWeapons) {
                 categories.put("S10", categoryMapping.get("S10"));
             }
-            if (suicideAndSelfHarm) {
+            if (hate) {
                 categories.put("S11", categoryMapping.get("S11"));
             }
-            if (sexualContent) {
+            if (suicideAndSelfHarm) {
                 categories.put("S12", categoryMapping.get("S12"));
             }
-            if (elections) {
+            if (sexualContent) {
                 categories.put("S13", categoryMapping.get("S13"));
+            }
+            if (elections) {
+                categories.put("S14", categoryMapping.get("S14"));
             }
             // Only put categories if not empty
             if (categories.isEmpty()) {
-                categories.put("S1", "Violent Crimes");
-                categories.put("S2", "Non-Violent Crimes");
-                categories.put("S3", "Sex Crimes");
-                categories.put("S4", "Child Exploitation");
-                categories.put("S5", "Defamation");
-                categories.put("S6", "Specialized Advice");
-                categories.put("S7", "Privacy");
-                categories.put("S8", "Intellectual Property");
-                categories.put("S9", "Indiscriminate Weapons");
-                categories.put("S10", "Hate");
-                categories.put("S11", "Self-Harm");
-                categories.put("S12", "Sexual Content");
-                categories.put("S13", "Elections");
+                categories = categoryMapping;
             }
             payloadObj.put("categories", categories);
 
@@ -309,7 +300,7 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
             post.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
 
             try (CloseableHttpResponse response = APIUtil.executeHTTPRequestWithRetries(
-                    post, httpClient, 10000, 0, 1)) {
+                    post, httpClient, 25000, 0, 1)) {
                 int statusCode = response.getStatusLine().getStatusCode();
                 String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
 
@@ -321,7 +312,7 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
                 }
             }
         } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to guardrails ai content safety resource", e);
+            throw new APIManagementException("Error occurred while calling out to content safety resource", e);
         }
     }
 
@@ -376,7 +367,7 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
 
         if (showAssessment) {
             assessmentObject.put(ContentSafetyGuardrailGuardrailsAIConstants.ASSESSMENTS,
-                    "Guardrails AI Content Safety API is unreachable or returned an invalid response.");
+                    "Content Safety API is unreachable or returned an invalid response.");
         }
         return assessmentObject.toString();
     }

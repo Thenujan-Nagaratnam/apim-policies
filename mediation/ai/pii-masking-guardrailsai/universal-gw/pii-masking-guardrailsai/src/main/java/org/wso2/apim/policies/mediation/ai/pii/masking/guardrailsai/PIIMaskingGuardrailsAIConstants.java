@@ -21,6 +21,7 @@ package org.wso2.apim.policies.mediation.ai.pii.masking.guardrailsai;
 public class PIIMaskingGuardrailsAIConstants {
     public static final int APIM_INTERNAL_EXCEPTION_CODE = 900967;
     public static final String TEXT_CLEAN_REGEX = "^\"|\"$";
+    public static final String ADVANCED_PII_SAFETY_BY_WSO2_GUARDRAILS = "ADVANCED_PII_GUARDRAIL_BY_WSO2";
 
     public static final String PII_ENTITIES = "PII_ENTITIES";
     public static final String PII_ENTITY = "piiEntity";

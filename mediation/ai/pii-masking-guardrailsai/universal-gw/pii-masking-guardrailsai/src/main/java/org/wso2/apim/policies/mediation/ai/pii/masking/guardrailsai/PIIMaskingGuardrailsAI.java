@@ -75,7 +75,7 @@ import java.util.regex.PatternSyntaxException;
 public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(PIIMaskingGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_pii_url = "http://localhost:8000/validate/pii";
+    private static final String guardrails_pii_url = "http://23.98.91.151:8000/validate/pii";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private String name;
@@ -112,7 +112,8 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
 
         try {
             identifyPIIAndTransform(messageContext);
-            String actionMessage = redact ? "Redaction completed successfully." : "Masking completed successfully.";
+            String actionMessage = redact ? "Redaction completed successfully " : "Masking completed successfully ";
+            actionMessage = actionMessage + "for " + this.name + ".";
             String flow = messageContext.isResponse() ? "response" : "request";
             String guardrailMessage = actionMessage + " In mediation " + flow + ".";
             logGuardrailViolation(messageContext, false, guardrailMessage);
@@ -121,11 +122,11 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
 
             messageContext.setProperty(SynapseConstants.ERROR_CODE,
                     PIIMaskingGuardrailsAIConstants.APIM_INTERNAL_EXCEPTION_CODE);
-            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE,
-                    "Error occurred during PIIMaskingRegex mediation");
+            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, "Error occurred during " +
+                            PIIMaskingGuardrailsAIConstants.ADVANCED_PII_SAFETY_BY_WSO2_GUARDRAILS + " mediation");
             Mediator faultMediator = messageContext.getFaultSequence();
             faultMediator.mediate(messageContext);
-            logGuardrailViolation(messageContext, true, e.getMessage());
+            logGuardrailViolation(messageContext, true, "Error occurred in " + this.name + ": " + e.getMessage());
             return false; // Stop further mediation
         }
         return true;
@@ -292,7 +293,8 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
                 }
             }
         } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to guardrails ai pii resource", e);
+            throw new APIManagementException("Error occurred while calling out to " +
+                    PIIMaskingGuardrailsAIConstants.ADVANCED_PII_SAFETY_BY_WSO2_GUARDRAILS, e);
         }
     }
 

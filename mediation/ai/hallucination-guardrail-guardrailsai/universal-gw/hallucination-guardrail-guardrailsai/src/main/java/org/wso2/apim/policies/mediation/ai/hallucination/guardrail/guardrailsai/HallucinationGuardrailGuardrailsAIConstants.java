@@ -26,7 +26,7 @@ public class HallucinationGuardrailGuardrailsAIConstants {
     public static final String FAULT_SEQUENCE_KEY = "guardrail_fault";
     public static final String ASSESSMENT_ACTION = "action";
     public static final String INTERVENING_GUARDRAIL = "interveningGuardrail";
-    public static final String HALLUCINATION_GUARDRAIL_GUARDRAILS_AI = "HALLUCINATION_GUARDRAIL_GUARDRAILS_AI";
+    public static final String HALLUCINATION_GUARDRAIL_GUARDRAILS_AI = "ADVANCED_HALLUCINATION_GUARDRAIL_BY_WSO2";
     public static final int APIM_INTERNAL_EXCEPTION_CODE = 900967;
     public static final String ASSESSMENT_REASON = "actionReason";
     public static final String DIRECTION = "direction";

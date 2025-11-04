@@ -54,11 +54,12 @@ import java.util.Map;
 public class HallucinationGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(HallucinationGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_hallucination_url = "http://localhost:8000/validate/hallucination";
+    private static final String guardrails_hallucination_url = "http://23.98.91.151:8000/validate/hallucination";
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private String name;
     private String jsonPath = "";
+    private boolean connectKnowledgeBase = false;
     private boolean showAssessment = false;
     private boolean passthroughOnError = false;
 
@@ -123,8 +124,8 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
 
             messageContext.setProperty(SynapseConstants.ERROR_CODE,
                     HallucinationGuardrailGuardrailsAIConstants.APIM_INTERNAL_EXCEPTION_CODE);
-            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE,
-                    "Error occurred during HallucinationGuardrailGuardrailsAI mediation");
+            messageContext.setProperty(SynapseConstants.ERROR_MESSAGE, "Error occurred during " +
+                    HallucinationGuardrailGuardrailsAIConstants.HALLUCINATION_GUARDRAIL_GUARDRAILS_AI + " HallucinationGuardrailGuardrailsAI mediation");
             Mediator faultMediator = messageContext.getFaultSequence();
             faultMediator.mediate(messageContext);
             // Log the guardrail violation with the error message
@@ -191,11 +192,11 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
             }
         } catch (APIManagementException | JsonProcessingException e) {
             if (!passthroughOnError) {
-                logger.error("API call to Guardrails AI hallucination detection resource has failed or returned an unexpected response.");
+                logger.error("API call to hallucination detection resource has failed or returned an unexpected response.");
                 messageContext.setProperty("GUARDRAILS_AI_MAX_RETRY_FAIL", true);
                 return false; // Guardrail intervention after maximum retries reached
             } else {
-                logger.warn("API call to Guardrails AI hallucination resource has failed or returned an unexpected response, " +
+                logger.warn("API call to hallucination resource has failed or returned an unexpected response, " +
                         "but continuing processing.");
             }
         }
@@ -230,7 +231,7 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
                 }
             }
         } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to guardrails ai hallucination resource", e);
+            throw new APIManagementException("Error occurred while calling out to hallucination resource", e);
         }
     }
 
@@ -277,7 +278,7 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
 
         if (showAssessment) {
             if (messageContext.getProperty("GUARDRAILS_AI_MAX_RETRY_FAIL") != null && (boolean) messageContext.getProperty("GUARDRAILS_AI_MAX_RETRY_FAIL")) {
-                assessmentObject.put(HallucinationGuardrailGuardrailsAIConstants.ASSESSMENTS, "Guardrails AI hallucination detection resource failure after maximum retries.");
+                assessmentObject.put(HallucinationGuardrailGuardrailsAIConstants.ASSESSMENTS, "Hallucination detection resource failure after maximum retries.");
             } else {
                 assessmentObject.put(HallucinationGuardrailGuardrailsAIConstants.ASSESSMENTS, "Hallucinated response detected with reason: " + messageContext.getProperty("HALLUCINATION_REASON"));
             }
@@ -323,5 +324,15 @@ public class HallucinationGuardrailGuardrailsAI extends AbstractMediator impleme
     public void setPassthroughOnError(boolean passthroughOnError) {
 
         this.passthroughOnError = passthroughOnError;
+    }
+
+    public boolean isConnectKnowledgeBase() {
+
+        return connectKnowledgeBase;
+    }
+
+    public void setConnectKnowledgeBase(boolean connectKnowledgeBase) {
+
+        this.connectKnowledgeBase = connectKnowledgeBase;
     }
 }
