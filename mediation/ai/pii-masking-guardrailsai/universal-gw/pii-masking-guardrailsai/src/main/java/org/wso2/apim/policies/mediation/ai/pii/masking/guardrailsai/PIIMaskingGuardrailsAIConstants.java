@@ -28,4 +28,7 @@ public class PIIMaskingGuardrailsAIConstants {
     public static final String PII_REGEX = "piiRegex";
     public static final String HEX_FORMAT = "%04x";
     public static final String REDACT_REPLACEMENT = "*****";
+    public static final String REQUEST_PAYLOAD = "request_payload";
+    public static final String RESOURCE = "resource";
+    public static final String POLICY_RESOURCE = "/validate/pii";
 }

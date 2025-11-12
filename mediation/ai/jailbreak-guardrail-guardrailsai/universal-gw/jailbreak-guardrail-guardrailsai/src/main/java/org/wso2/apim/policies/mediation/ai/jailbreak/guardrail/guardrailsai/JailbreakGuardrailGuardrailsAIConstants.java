@@ -32,4 +32,7 @@ public class JailbreakGuardrailGuardrailsAIConstants {
     public static final String DIRECTION = "direction";
     public static final String ASSESSMENTS = "assessments";
     public static final String TEXT_CLEAN_REGEX = "^\"|\"$";
+    public static final String REQUEST_PAYLOAD = "request_payload";
+    public static final String RESOURCE = "resource";
+    public static final String POLICY_RESOURCE = "/validate/jailbreak";
 }

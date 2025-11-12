@@ -24,12 +24,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.Mediator;
 import org.apache.synapse.MessageContext;
@@ -40,11 +34,9 @@ import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.AbstractMediator;
 import org.json.JSONObject;
 import org.wso2.carbon.apimgt.api.APIManagementException;
-import org.wso2.carbon.apimgt.impl.APIConstants;
-import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.api.GuardrailProviderService;
+import org.wso2.apim.policies.mediation.ai.jailbreak.guardrail.guardrailsai.internal.ServiceReferenceHolder;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,8 +46,9 @@ import java.util.Map;
 public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(JailbreakGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_jailbreak_url = "http://23.98.91.151:8000/validate/jailbreak";
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private GuardrailProviderService guardrailProvider;
 
     private String name;
     private int threshold = 90;
@@ -73,6 +66,17 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
         if (logger.isDebugEnabled()) {
             logger.debug("Initializing JailbreakGuardrailGuardrailsAI.");
         }
+
+        guardrailProvider = ServiceReferenceHolder.getInstance().getGuardrailProvider();
+
+        // Only validate vector services if knowledge base connection is enabled
+        if (guardrailProvider == null) {
+            String errorMsg = "Required services not available. " +
+                    ", GuardrailProviderService present: " + false + ".";
+            logger.error(errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+
     }
 
     /**
@@ -211,34 +215,16 @@ public class JailbreakGuardrailGuardrailsAI extends AbstractMediator implements 
     }
 
     private String callOut(String text) throws APIManagementException {
-        String url = guardrails_jailbreak_url;
-        HttpClient httpClient = APIUtil.getHttpClient(url);
-        HttpPost post = new HttpPost(url);
-        post.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
 
-        try {
-            // Build payload
-            Map<String, Object> payloadObj = new HashMap<>();
-            payloadObj.put("text", text);
+        // Build payload
+        Map<String, Object> callOutConfig = new HashMap<>();
+        Map<String, Object> requestPayload = new HashMap<>();
+        requestPayload.put("text", text);
 
-            String body = objectMapper.writeValueAsString(payloadObj);
-            post.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = APIUtil.executeHTTPRequestWithRetries(
-                    post, httpClient, 10000, 0, 1)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-
-                if (statusCode == HttpStatus.SC_OK) {
-                    JsonNode root = objectMapper.readTree(responseBody);
-                    return root.toString();
-                } else {
-                    throw new APIManagementException("Unexpected status code " + statusCode + ": " + responseBody);
-                }
-            }
-        } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to " + JailbreakGuardrailGuardrailsAIConstants.JAILBREAK_GUARDRAILS_AI, e);
-        }
+        callOutConfig.put(JailbreakGuardrailGuardrailsAIConstants.REQUEST_PAYLOAD, requestPayload);
+        callOutConfig.put(JailbreakGuardrailGuardrailsAIConstants.RESOURCE,
+                JailbreakGuardrailGuardrailsAIConstants.POLICY_RESOURCE);
+        return guardrailProvider.callOut(callOutConfig);
     }
 
     /**

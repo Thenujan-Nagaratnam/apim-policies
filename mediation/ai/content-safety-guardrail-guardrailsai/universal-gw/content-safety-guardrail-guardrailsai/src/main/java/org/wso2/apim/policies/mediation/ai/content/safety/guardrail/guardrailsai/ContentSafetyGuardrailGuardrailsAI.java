@@ -38,12 +38,12 @@ import org.apache.synapse.commons.json.JsonUtil;
 import org.apache.synapse.core.SynapseEnvironment;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.AbstractMediator;
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.wso2.carbon.apimgt.api.APIManagementException;
 import org.wso2.carbon.apimgt.api.GuardrailProviderService;
 import org.wso2.carbon.apimgt.impl.APIConstants;
 import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.apim.policies.mediation.ai.content.safety.guardrail.guardrailsai.internal.ServiceReferenceHolder;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -51,7 +51,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Content Safety Guardrail mediator.
@@ -59,9 +58,10 @@ import java.util.stream.Collectors;
 public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(ContentSafetyGuardrailGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_contentsafety_url = "http://23.98.91.151:8000/validate/content-safety";
     private static final ObjectMapper objectMapper = new ObjectMapper();
     private static final Map<String, String> categoryMapping = new HashMap<>();
+
+    private GuardrailProviderService guardrailProvider;
 
     private String name;
     private boolean violentCrimes;              // S1
@@ -91,6 +91,17 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
         if (logger.isDebugEnabled()) {
             logger.debug("Initializing ContentSafetyGuardrailGuardrailsAI.");
         }
+
+        guardrailProvider = ServiceReferenceHolder.getInstance().getGuardrailProvider();
+
+        // Only validate vector services if knowledge base connection is enabled
+        if (guardrailProvider == null) {
+            String errorMsg = "Required services not available. " +
+                    ", GuardrailProviderService present: " + false + ".";
+            logger.error(errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+
 
         categoryMapping.put("S1", "Default");
         categoryMapping.put("S2", "Violent Crimes");
@@ -239,81 +250,63 @@ public class ContentSafetyGuardrailGuardrailsAI extends AbstractMediator impleme
     }
 
     private String callOut(String text) throws APIManagementException {
-        String url = guardrails_contentsafety_url;
-        HttpClient httpClient = APIUtil.getHttpClient(url);
-        HttpPost post = new HttpPost(url);
-        post.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
 
-        try {
-            // Build payload
-            Map<String, Object> payloadObj = new HashMap<>();
-            payloadObj.put("text", text);
-            // Categories map
-            Map<String, String> categories = new HashMap<>();
-            categories.put("S1", categoryMapping.get("S1")); // Always include default category
-            if (violentCrimes) {
-                categories.put("S2", categoryMapping.get("S2"));
-            }
-            if (nonViolentCrimes) {
-                categories.put("S3", categoryMapping.get("S3"));
-            }
-            if (sexRelatedCrimes) {
-                categories.put("S4", categoryMapping.get("S4"));
-            }
-            if (childSexualExploitation) {
-                categories.put("S5", categoryMapping.get("S5"));
-            }
-            if (defamation) {
-                categories.put("S6", categoryMapping.get("S6"));
-            }
-            if (specializedAdvice) {
-                categories.put("S7", categoryMapping.get("S7"));
-            }
-            if (privacy) {
-                categories.put("S8", categoryMapping.get("S8"));
-            }
-            if (intellectualProperty) {
-                categories.put("S9", categoryMapping.get("S9"));
-            }
-            if (indiscriminateWeapons) {
-                categories.put("S10", categoryMapping.get("S10"));
-            }
-            if (hate) {
-                categories.put("S11", categoryMapping.get("S11"));
-            }
-            if (suicideAndSelfHarm) {
-                categories.put("S12", categoryMapping.get("S12"));
-            }
-            if (sexualContent) {
-                categories.put("S13", categoryMapping.get("S13"));
-            }
-            if (elections) {
-                categories.put("S14", categoryMapping.get("S14"));
-            }
-            // Only put categories if not empty
-            if (categories.isEmpty()) {
-                categories = categoryMapping;
-            }
-            payloadObj.put("categories", categories);
-
-            String body = objectMapper.writeValueAsString(payloadObj);
-            post.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = APIUtil.executeHTTPRequestWithRetries(
-                    post, httpClient, 25000, 0, 1)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-
-                if (statusCode == HttpStatus.SC_OK) {
-                    JsonNode root = objectMapper.readTree(responseBody);
-                    return root.toString();
-                } else {
-                    throw new APIManagementException("Unexpected status code " + statusCode + ": " + responseBody);
-                }
-            }
-        } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to content safety resource", e);
+        // Build payload
+        Map<String, Object> callOutConfig = new HashMap<>();
+        Map<String, Object> requestPayload = new HashMap<>();
+        requestPayload.put("text", text);
+        // Categories map
+        Map<String, String> categories = new HashMap<>();
+        categories.put("S1", categoryMapping.get("S1")); // Always include default category
+        if (violentCrimes) {
+            categories.put("S2", categoryMapping.get("S2"));
         }
+        if (nonViolentCrimes) {
+            categories.put("S3", categoryMapping.get("S3"));
+        }
+        if (sexRelatedCrimes) {
+            categories.put("S4", categoryMapping.get("S4"));
+        }
+        if (childSexualExploitation) {
+            categories.put("S5", categoryMapping.get("S5"));
+        }
+        if (defamation) {
+            categories.put("S6", categoryMapping.get("S6"));
+        }
+        if (specializedAdvice) {
+            categories.put("S7", categoryMapping.get("S7"));
+        }
+        if (privacy) {
+            categories.put("S8", categoryMapping.get("S8"));
+        }
+        if (intellectualProperty) {
+            categories.put("S9", categoryMapping.get("S9"));
+        }
+        if (indiscriminateWeapons) {
+            categories.put("S10", categoryMapping.get("S10"));
+        }
+        if (hate) {
+            categories.put("S11", categoryMapping.get("S11"));
+        }
+        if (suicideAndSelfHarm) {
+            categories.put("S12", categoryMapping.get("S12"));
+        }
+        if (sexualContent) {
+            categories.put("S13", categoryMapping.get("S13"));
+        }
+        if (elections) {
+            categories.put("S14", categoryMapping.get("S14"));
+        }
+        // Only put categories if not empty
+        if (categories.isEmpty()) {
+            categories = categoryMapping;
+        }
+        requestPayload.put("categories", categories);
+
+        callOutConfig.put(ContentSafetyGuardrailGuardrailsAIConstants.REQUEST_PAYLOAD, requestPayload);
+        callOutConfig.put(ContentSafetyGuardrailGuardrailsAIConstants.RESOURCE,
+                ContentSafetyGuardrailGuardrailsAIConstants.POLICY_RESOURCE);
+        return guardrailProvider.callOut(callOutConfig);
     }
 
     /**

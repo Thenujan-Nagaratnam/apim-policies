@@ -29,12 +29,6 @@ import com.jayway.jsonpath.JsonPath;
 import org.apache.axis2.AxisFault;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 import org.apache.synapse.ManagedLifecycle;
 import org.apache.synapse.Mediator;
 import org.apache.synapse.MessageContext;
@@ -44,13 +38,10 @@ import org.apache.synapse.core.SynapseEnvironment;
 import org.apache.synapse.core.axis2.Axis2MessageContext;
 import org.apache.synapse.mediators.AbstractMediator;
 import org.wso2.carbon.apimgt.api.APIManagementException;
-import org.wso2.carbon.apimgt.impl.APIConstants;
-import org.wso2.carbon.apimgt.impl.utils.APIUtil;
+import org.wso2.carbon.apimgt.api.GuardrailProviderService;
+import org.wso2.apim.policies.mediation.ai.pii.masking.guardrailsai.internal.ServiceReferenceHolder;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -75,8 +66,9 @@ import java.util.regex.PatternSyntaxException;
 public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedLifecycle {
     private static final Log logger = LogFactory.getLog(PIIMaskingGuardrailsAI.class);
     private static final Log guardrailLogger = LogFactory.getLog("guardrail-violations");
-    private static final String guardrails_pii_url = "http://23.98.91.151:8000/validate/pii";
     private static final ObjectMapper objectMapper = new ObjectMapper();
+
+    private GuardrailProviderService guardrailProvider;
 
     private String name;
     private String piiEntities;
@@ -94,6 +86,17 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
         if (logger.isDebugEnabled()) {
             logger.debug("Initializing PIIMaskingRegex.");
         }
+
+        guardrailProvider = ServiceReferenceHolder.getInstance().getGuardrailProvider();
+
+        // Only validate vector services if knowledge base connection is enabled
+        if (guardrailProvider == null) {
+            String errorMsg = "Required services not available. " +
+                    ", GuardrailProviderService present: " + false + ".";
+            logger.error(errorMsg);
+            throw new RuntimeException(errorMsg);
+        }
+
     }
 
     /**
@@ -266,36 +269,16 @@ public class PIIMaskingGuardrailsAI extends AbstractMediator implements ManagedL
     }
 
     private String callOut(String text) throws APIManagementException {
-        String url = guardrails_pii_url;
-        HttpClient httpClient = APIUtil.getHttpClient(url);
-        HttpPost post = new HttpPost(url);
-        post.setHeader(APIConstants.HEADER_CONTENT_TYPE, APIConstants.APPLICATION_JSON_MEDIA_TYPE);
+        // Build payload
+        Map<String, Object> callOutConfig = new HashMap<>();
+        Map<String, Object> requestPayload = new HashMap<>();
+        requestPayload.put("text", text);
+        requestPayload.put("piiEntities", piiEntityArray);
 
-        try {
-            // Build payload
-            Map<String, Object> payloadObj = new HashMap<>();
-            payloadObj.put("text", text);
-            payloadObj.put("piiEntities", piiEntityArray);
-
-            String body = objectMapper.writeValueAsString(payloadObj);
-            post.setEntity(new StringEntity(body, StandardCharsets.UTF_8));
-
-            try (CloseableHttpResponse response = APIUtil.executeHTTPRequestWithRetries(
-                    post, httpClient, 10000, 0, 1)) {
-                int statusCode = response.getStatusLine().getStatusCode();
-                String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-
-                if (statusCode == HttpStatus.SC_OK) {
-                    JsonNode root = objectMapper.readTree(responseBody);
-                    return root.toString();
-                } else {
-                    throw new APIManagementException("Unexpected status code " + statusCode + ": " + responseBody);
-                }
-            }
-        } catch (IOException e) {
-            throw new APIManagementException("Error occurred while calling out to " +
-                    PIIMaskingGuardrailsAIConstants.ADVANCED_PII_SAFETY_BY_WSO2_GUARDRAILS, e);
-        }
+        callOutConfig.put(PIIMaskingGuardrailsAIConstants.REQUEST_PAYLOAD, requestPayload);
+        callOutConfig.put(PIIMaskingGuardrailsAIConstants.RESOURCE,
+                PIIMaskingGuardrailsAIConstants.POLICY_RESOURCE);
+        return guardrailProvider.callOut(callOutConfig);
     }
 
     private static String generateHexId(AtomicInteger counter) {

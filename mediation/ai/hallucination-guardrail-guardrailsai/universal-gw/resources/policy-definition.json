@@ -5,6 +5,7 @@
   "displayName": "Advanced Hallucination Guardrail by WSO2",
   "description": "Validates response content using an advanced hallucination detection model powered by WSO2 guardrails. If the content is detected as hallucinated, the guardrail intervenes and returns an error response.",
   "applicableFlows": [
+    "request",
     "response"
   ],
   "supportedGateways": [
@@ -41,6 +42,24 @@
       "defaultValue": "false",
       "type": "Boolean",
       "allowedValues": []
+    },
+    {
+      "name": "knowledgeBaseCollectionName",
+      "displayName": "Knowledge Base Collection Name",
+      "description": "The name of the knowledge base collection in the vector database to be used for grounding the hallucination detection. This is required if 'Connect to a Vector Database for Hallucination Detection through Grounded Knowledge' is enabled.",
+      "type": "String",
+      "allowedValues": [],
+      "required": false,
+      "defaultValue": ""
+    },
+    {
+      "name": "outputFields",
+      "displayName": "Output Fields",
+      "description": "A comma-separated list of vector database collection schema fields to include in the output for grounding verification. All fields will be used if not specified.",
+      "type": "String",
+      "allowedValues": [],
+      "required": false,
+      "defaultValue": ""
     },
     {
       "name": "passthroughOnError",
