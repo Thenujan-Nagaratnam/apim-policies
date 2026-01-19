@@ -37,6 +37,9 @@ public class SemanticCacheConstants {
     // HTTP Headers and Status
     public static final String CONTENT_TYPE = "Content-Type";
     public static final String NO_STORE_STRING = "no-store";
+    public static final String CACHE_STATUS_HEADER = "x-cache-status";
+    public static final String CACHE_STATUS_HIT = "HIT";
+    public static final String CACHE_STATUS_MISS = "MISS";
 
     // API Configuration
     public static final String API_ID = "api_id";

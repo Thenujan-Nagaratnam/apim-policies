@@ -274,13 +274,14 @@ public class SemanticCache extends AbstractMediator implements ManagedLifecycle 
         }
 
         Map<String, Object> headerProperties = cachedResponse.getHeaderProperties();
+        Map<String, Object> clonedMap = headerProperties != null ? new HashMap<>(headerProperties) : new HashMap<>();
+        clonedMap.put(SemanticCacheConstants.CACHE_STATUS_HEADER, SemanticCacheConstants.CACHE_STATUS_HIT);
+        msgCtx.setProperty(org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS, clonedMap);
         if (headerProperties != null) {
-            Map<String, Object> clonedMap = new HashMap<>(headerProperties);
-            msgCtx.setProperty(org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS, clonedMap);
             msgCtx.setProperty(Constants.Configuration.MESSAGE_TYPE,
-                    clonedMap.get(Constants.Configuration.MESSAGE_TYPE));
+                clonedMap.get(Constants.Configuration.MESSAGE_TYPE));
             msgCtx.setProperty(Constants.Configuration.CONTENT_TYPE,
-                    clonedMap.get(SemanticCacheConstants.CONTENT_TYPE));
+                clonedMap.get(SemanticCacheConstants.CONTENT_TYPE));
         }
 
         synCtx.setTo(null);
@@ -300,6 +301,14 @@ public class SemanticCache extends AbstractMediator implements ManagedLifecycle 
             throws java.text.ParseException {
         org.apache.axis2.context.MessageContext msgCtx =
                 ((Axis2MessageContext) messageContext).getAxis2MessageContext();
+
+        Map<String, String> transportHeaders = (Map<String, String>) msgCtx.getProperty(
+                org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS);
+        if (transportHeaders == null) {
+            transportHeaders = new HashMap<>();
+        }
+        transportHeaders.put(SemanticCacheConstants.CACHE_STATUS_HEADER, SemanticCacheConstants.CACHE_STATUS_MISS);
+        msgCtx.setProperty(org.apache.axis2.context.MessageContext.TRANSPORT_HEADERS, transportHeaders);
 
         if (isNoStore(msgCtx)) {
             return;
